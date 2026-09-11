@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Hajtóvadászat</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg: #0a0e0c;
+    --panel: #0f1512;
+    --line: #1f2b24;
+    --radar: #4fe08a;
+    --radar-dim: #234a34;
+    --amber: #e0a94f;
+    --red: #e0574f;
+    --text: #d9ece1;
+    --text-dim: #7fa08c;
+    --mono: 'Courier New', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 50% 0%, rgba(79,224,138,0.06), transparent 60%);
+  }
+  .wrap{
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+    min-height: 100vh;
+  }
+  .eyebrow-none{display:none;}
+  h1{
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    line-height: 1.15;
+  }
+  .sub{
+    color: var(--text-dim);
+    font-size: 14.5px;
+    line-height: 1.5;
+    margin: 0 0 32px;
+  }
+  .blip{
+    display:inline-block;
+    width:8px; height:8px;
+    border-radius:50%;
+    background: var(--radar);
+    margin-right:8px;
+    box-shadow: 0 0 8px var(--radar);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;}
+    50%{opacity:0.35;}
+  }
+  .cards{ display:flex; flex-direction:column; gap:14px; }
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    text-align:left;
+    cursor:pointer;
+    transition: border-color .15s ease, transform .1s ease;
+    color: inherit;
+    font: inherit;
+    width:100%;
+  }
+  .card:hover{ border-color: var(--radar); }
+  .card:active{ transform: scale(0.99); }
+  .card h2{ margin:0 0 6px; font-size:18px; font-weight:700; }
+  .card p{ margin:0; color: var(--text-dim); font-size: 13.5px; line-height:1.5;}
+  .role-icon{ font-size: 26px; margin-bottom: 10px; display:block; }
+
+  .btn{
+    background: var(--radar);
+    color: #05130b;
+    border: none;
+    border-radius: 10px;
+    padding: 15px 20px;
+    font-size: 15.5px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    transition: filter .15s ease, transform .1s ease;
+  }
+  .btn:hover{ filter: brightness(1.08); }
+  .btn:active{ transform: scale(0.98); }
+  .btn.secondary{
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+  }
+  .btn.danger{ background: var(--red); color: #200807; }
+  .btn:disabled{ opacity:0.45; cursor:default; }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .status-row{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 4px;
+  }
+  .status-label{ font-size: 13px; color: var(--text-dim); }
+  .status-value{ font-family: var(--mono); font-size: 15px; }
+  .status-value.ok{ color: var(--radar); }
+  .status-value.warn{ color: var(--amber); }
+  .status-value.bad{ color: var(--red); }
+
+  .divider{ height:1px; background: var(--line); margin: 14px 0; }
+
+  #map{
+    width: 100%;
+    height: 280px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    border: 1px solid var(--line);
+    filter: saturate(0.7) brightness(0.85);
+  }
+  .backlink{
+    display:inline-block;
+    margin-top: 22px;
+    color: var(--text-dim);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+    background:none; border:none; padding:0; font-family:inherit;
+  }
+  .msg{
+    font-size: 13.5px;
+    color: var(--text-dim);
+    line-height:1.5;
+    padding: 12px 14px;
+    background: rgba(224,169,79,0.08);
+    border: 1px solid rgba(224,169,79,0.25);
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+  .msg.err{
+    background: rgba(224,87,79,0.08);
+    border-color: rgba(224,87,79,0.3);
+  }
+  .coords{
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+const app = document.getElementById('app');
+const UPDATE_INTERVAL_MS = 10 * 60 * 1000; // 10 perc
+const STALE_AFTER_MS = 12 * 60 * 1000; // 12 perc után gyanús
+const SZEGED_CENTER = [46.253, 20.1414];
+const SZEGED_BOUNDS = L.latLngBounds([46.15, 19.98], [46.34, 20.32]);
+
+let groomWatchTimer = null;
+let groomCountdownTimer = null;
+let chaserPollTimer = null;
+let chaserTickTimer = null;
+let map = null;
+let marker = null;
+let accuracyCircle = null;
+let nextUpdateAt = null;
+
+function render(html){ app.innerHTML = html; }
+
+function goHome(){
+  clearTimers();
+  render(`
+    <div class="blip"></div><span style="font-size:13px;color:var(--text-dim);letter-spacing:0.02em;">élő játék</span>
+    <h1>Hajtóvadászat</h1>
+    <p class="sub">A vőlegény telefonja 10 percenként elküldi a helyzetét. Válaszd ki, ki vagy.</p>
+    <div class="cards">
+      <button class="card" onclick="startGroomPassword()">
+        <span class="role-icon">🏃</span>
+        <h2>Peti vagyok</h2>
+        <p>A telefonod GPS-ét megosztod az üldözőkkel, 10 percenként frissül. Jelszó szükséges.</p>
+      </button>
+      <button class="card" onclick="startChaser()">
+        <span class="role-icon">🔎</span>
+        <h2>Üldöző vagyok</h2>
+        <p>Megnézed, hol jár most a vőlegény, és odaérsz mielőtt újra elmenekül.</p>
+      </button>
+    </div>
+  `);
+}
+
+function clearTimers(){
+  if(groomWatchTimer) clearInterval(groomWatchTimer);
+  if(groomCountdownTimer) clearInterval(groomCountdownTimer);
+  if(chaserPollTimer) clearInterval(chaserPollTimer);
+  if(chaserTickTimer) clearInterval(chaserTickTimer);
+  groomWatchTimer = groomCountdownTimer = chaserPollTimer = chaserTickTimer = null;
+  map = null; marker = null; accuracyCircle = null;
+}
+
+// ---------- GROOM ----------
+
+function startGroomPassword(){
+  render(`
+    <h1>Peti mód</h1>
+    <p class="sub">Ehhez jelszó kell — csak Petinek szabad elindítania a követést.</p>
+    <div class="panel">
+      <input type="password" id="groom-password" placeholder="Jelszó" autocomplete="off"
+        style="width:100%; padding:14px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:15px; margin-bottom:12px;"
+        onkeydown="if(event.key==='Enter') checkGroomPassword();">
+      <button class="btn" onclick="checkGroomPassword()">Belépés</button>
+      <div id="groom-password-error"></div>
+    </div>
+    <button class="backlink" onclick="goHome()">← vissza</button>
+  `);
+  document.getElementById('groom-password').focus();
+}
+
+function checkGroomPassword(){
+  const input = document.getElementById('groom-password');
+  const errEl = document.getElementById('groom-password-error');
+  if(input.value === 'Vani'){
+    startGroom();
+  } else {
+    errEl.innerHTML = '<div class="msg err" style="margin-top:12px;">Rossz jelszó. Próbáld újra.</div>';
+    input.value = '';
+    input.focus();
+  }
+}
+
+function startGroom(){
+  render(`
+    <h1>Vőlegény mód</h1>
+    <p class="sub">Engedélyezd a helymeghatározást. Onnantól a telefonod magától küld egy jelet 10 percenként — nem kell mást csinálnod, csak futni.</p>
+    <div class="panel">
+      <button class="btn" id="groom-start-btn" onclick="requestGroomLocation()">Vadászat indítása</button>
+    </div>
+    <button class="backlink" onclick="goHome()">← vissza</button>
+  `);
+}
+
+function requestGroomLocation(){
+  const btn = document.getElementById('groom-start-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Helymeghatározás...'; }
+  if(!navigator.geolocation){
+    renderGroomError('Ez a böngésző nem támogatja a helymeghatározást.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      sendGroomLocation(pos);
+      renderGroomActive();
+      groomWatchTimer = setInterval(sendGroomUpdate, UPDATE_INTERVAL_MS);
+    },
+    (err) => {
+      let reason = 'Ismeretlen hiba történt.';
+      if(err.code === 1) reason = 'A böngésző szerint nincs engedélyezve a helymeghatározás ehhez az oldalhoz. Ha ezt egy Claude chat-előnézetben nyitottad meg, publikáld az oldalt, és a publikált linket nyisd meg közvetlenül — a beágyazott előnézet gyakran letiltja ezt.';
+      else if(err.code === 2) reason = 'A telefon jelenleg nem tudja megállapítani a pozíciódat (pl. gyenge GPS-jel). Menj szabad ég alá, és próbáld újra.';
+      else if(err.code === 3) reason = 'A helymeghatározás túl sokáig tartott. Próbáld újra, lehetőleg szabad ég alatt.';
+      renderGroomError(reason);
+    },
+    { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+  );
+}
+
+function sendGroomUpdate(){
+  navigator.geolocation.getCurrentPosition(
+    (pos) => { sendGroomLocation(pos); updateGroomStatus(); },
+    (err) => { updateGroomStatus(true); },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+async function sendGroomLocation(pos){
+  const payload = {
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    accuracy: Math.round(pos.coords.accuracy || 0),
+    timestamp: Date.now()
+  };
+  try{
+    await fetch('/.netlify/functions/location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, token: 'Vani' })
+    });
+  }catch(e){
+    console.error('Storage error', e);
+  }
+  window.__lastGroomPayload = payload;
+  nextUpdateAt = Date.now() + UPDATE_INTERVAL_MS;
+}
+
+function renderGroomActive(){
+  render(`
+    <h1>Vadászat aktív</h1>
+    <p class="sub">A helyzeted 10 percenként frissül az üldözőknek. Tedd zsebre a telefont és fuss.</p>
+    <div class="panel">
+      <div class="status-row">
+        <span class="status-label">Állapot</span>
+        <span class="status-value ok" id="groom-state">🟢 Küldés folyamatban</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Utolsó jel</span>
+        <span class="status-value" id="groom-last">most</span>
+      </div>
+      <div class="divider"></div>
+      <div class="status-row">
+        <span class="status-label">Következő jel</span>
+        <span class="status-value" id="groom-countdown">10:00</span>
+      </div>
+    </div>
+    <button class="btn secondary" onclick="sendGroomUpdate()">Frissítés most</button>
+    <div style="height:10px;"></div>
+    <button class="btn danger" onclick="stopGroom()">Vadászat leállítása</button>
+    <button class="backlink" onclick="goHome()">← vissza a főoldalra</button>
+  `);
+  if(groomCountdownTimer) clearInterval(groomCountdownTimer);
+  groomCountdownTimer = setInterval(tickGroomCountdown, 1000);
+  tickGroomCountdown();
+}
+
+function tickGroomCountdown(){
+  const el = document.getElementById('groom-countdown');
+  if(!el || !nextUpdateAt) return;
+  const remaining = Math.max(0, nextUpdateAt - Date.now());
+  const mins = Math.floor(remaining / 60000);
+  const secs = Math.floor((remaining % 60000) / 1000);
+  el.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
+}
+
+function updateGroomStatus(failed){
+  const stateEl = document.getElementById('groom-state');
+  const lastEl = document.getElementById('groom-last');
+  if(stateEl) stateEl.textContent = failed ? '🟠 Nem sikerült frissíteni' : '🟢 Küldés folyamatban';
+  if(stateEl) stateEl.className = 'status-value ' + (failed ? 'warn' : 'ok');
+  if(lastEl) lastEl.textContent = 'most';
+}
+
+function renderGroomError(text){
+  render(`
+    <h1>Vőlegény mód</h1>
+    <div class="msg err">${text}</div>
+    <button class="btn" onclick="startGroom()">Újra</button>
+    <button class="backlink" onclick="goHome()">← vissza</button>
+  `);
+}
+
+function stopGroom(){
+  clearTimers();
+  goHome();
+}
+
+// ---------- CHASER ----------
+
+function startChaser(){
+  clearTimers();
+  render(`
+    <h1>Üldöző mód</h1>
+    <p class="sub" id="chaser-sub">Helyzet lekérése...</p>
+    <div id="map"></div>
+    <div class="panel">
+      <div class="status-row">
+        <span class="status-label">Frissítve</span>
+        <span class="status-value" id="chaser-time">—</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Utoljára látva</span>
+        <span class="status-value" id="chaser-age">—</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Pontosság</span>
+        <span class="status-value" id="chaser-acc">—</span>
+      </div>
+      <div class="divider"></div>
+      <span class="coords" id="chaser-coords"></span>
+    </div>
+    <button class="btn" id="chaser-maps-btn" style="display:none;" onclick="openInMaps()">Megnyitás Google Maps-ben</button>
+    <div style="height:10px;"></div>
+    <button class="btn secondary" onclick="pollChaser()">Frissítés most</button>
+    <button class="backlink" onclick="goHome()">← vissza a főoldalra</button>
+  `);
+  map = L.map('map', {
+    zoomControl: true,
+    attributionControl: true
+  });
+  map.setView(SZEGED_CENTER, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+  pollChaser();
+  chaserPollTimer = setInterval(pollChaser, 20000);
+  chaserTickTimer = setInterval(refreshChaserAge, 1000);
+}
+
+let lastKnown = null;
+
+async function pollChaser(){
+  try{
+    const res = await fetch('/.netlify/functions/location');
+    const data = await res.json();
+    if(data){
+      lastKnown = data;
+      renderChaserData();
+    } else {
+      document.getElementById('chaser-sub').textContent = 'A vőlegény még nem küldött jelzést.';
+    }
+  }catch(e){
+    document.getElementById('chaser-sub').textContent = 'A vőlegény még nem küldött jelzést.';
+  }
+}
+
+function renderChaserData(){
+  if(!lastKnown) return;
+  const { lat, lng, accuracy } = lastKnown;
+  document.getElementById('chaser-sub').textContent = SZEGED_BOUNDS.contains([lat, lng])
+    ? 'Utolsó ismert pozíció:'
+    : 'Utolsó ismert pozíció (Szegeden kívül):';
+  document.getElementById('chaser-time').textContent = new Date(lastKnown.timestamp).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('chaser-acc').textContent = accuracy ? `± ${accuracy} m` : 'ismeretlen';
+  document.getElementById('chaser-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  document.getElementById('chaser-maps-btn').style.display = 'block';
+
+  if(map){
+    map.setView([lat, lng], 15);
+    if(marker){ marker.setLatLng([lat, lng]); }
+    else{ marker = L.marker([lat, lng]).addTo(map).bindTooltip('Peti', { permanent: true, direction: 'top', offset: [0, -8] }); }
+    if(accuracyCircle){ accuracyCircle.setLatLng([lat, lng]).setRadius(accuracy || 50); }
+    else{ accuracyCircle = L.circle([lat, lng], { radius: accuracy || 50, color: '#4fe08a', fillColor: '#4fe08a', fillOpacity: 0.15, weight: 1 }).addTo(map); }
+  }
+  refreshChaserAge();
+}
+
+function refreshChaserAge(){
+  if(!lastKnown) return;
+  const ageMs = Date.now() - lastKnown.timestamp;
+  const mins = Math.floor(ageMs / 60000);
+  const secs = Math.floor((ageMs % 60000) / 1000);
+  const el = document.getElementById('chaser-age');
+  if(!el) return;
+  el.textContent = mins > 0 ? `${mins} perce` : `${secs} másodperce`;
+  el.className = 'status-value ' + (ageMs > STALE_AFTER_MS ? 'bad' : (ageMs > UPDATE_INTERVAL_MS ? 'warn' : 'ok'));
+}
+
+function openInMaps(){
+  if(!lastKnown) return;
+  window.open(`https://www.google.com/maps?q=${lastKnown.lat},${lastKnown.lng}`, '_blank');
+}
+
+goHome();
+</script>
+</body>
+</html>
