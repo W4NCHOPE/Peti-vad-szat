@@ -3,6 +3,17 @@ const { getStore } = require('@netlify/blobs');
 // Egyszerű védelem: csak az tud írni, aki ismeri a "jelszót" (ugyanaz, mint a Peti belépőkód).
 const WRITE_TOKEN = 'Vani';
 
+function getBlobStore() {
+  // Kézi konfiguráció, mert a Netlify Blobs automatikus környezet-injektálása
+  // néha nem működik (MissingBlobsEnvironmentError). A SITE_ID és BLOBS_TOKEN
+  // értékeket a Netlify Site settings → Environment variables alatt kell beállítani.
+  return getStore({
+    name: 'hajtovadaszat',
+    siteID: process.env.BLOBS_SITE_ID,
+    token: process.env.BLOBS_TOKEN
+  });
+}
+
 exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',
@@ -15,7 +26,7 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers };
   }
 
-  const store = getStore('hajtovadaszat');
+  const store = getBlobStore();
 
   if (event.httpMethod === 'POST') {
     let body;
