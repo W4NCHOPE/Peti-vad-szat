@@ -18,7 +18,7 @@ exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
   };
 
@@ -48,6 +48,22 @@ exports.handler = async (event) => {
     };
 
     await store.setJSON('groom-location', payload);
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+  }
+
+  if (event.httpMethod === 'DELETE') {
+    let body;
+    try {
+      body = JSON.parse(event.body || '{}');
+    } catch (e) {
+      body = {};
+    }
+
+    if (body.token !== WRITE_TOKEN) {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized' }) };
+    }
+
+    await store.delete('groom-location');
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
   }
 
