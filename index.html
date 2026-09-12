@@ -370,8 +370,17 @@ function renderGroomError(text){
   `);
 }
 
-function stopGroom(){
+async function stopGroom(){
   clearTimers();
+  try{
+    await fetch('/.netlify/functions/location', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'Vani' })
+    });
+  }catch(e){
+    console.error('Storage error', e);
+  }
   goHome();
 }
 
