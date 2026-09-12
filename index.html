@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Hajtóvadászat</title>
+<title>Peti legénybúcsú 2026</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -185,7 +185,7 @@ function goHome(){
   clearTimers();
   render(`
     <div class="blip"></div><span style="font-size:13px;color:var(--text-dim);letter-spacing:0.02em;">élő játék</span>
-    <h1>Hajtóvadászat</h1>
+    <h1>Peti legénybúcsú 2026</h1>
     <p class="sub">A vőlegény telefonja 10 percenként elküldi a helyzetét. Válaszd ki, ki vagy.</p>
     <div class="cards">
       <button class="card" onclick="startGroomPassword()">
@@ -278,10 +278,15 @@ function requestGroomLocation(){
 
 function sendGroomUpdate(){
   navigator.geolocation.getCurrentPosition(
-    (pos) => { sendGroomLocation(pos); updateGroomStatus(); },
+    (pos) => { updateGroomStatus(false); sendGroomLocation(pos); },
     (err) => { updateGroomStatus(true); },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
+}
+
+function formatTime(ts){
+  const d = new Date(ts);
+  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
 }
 
 async function sendGroomLocation(pos){
@@ -291,14 +296,20 @@ async function sendGroomLocation(pos){
     accuracy: Math.round(pos.coords.accuracy || 0),
     timestamp: Date.now()
   };
+  let sent = false;
   try{
-    await fetch('/.netlify/functions/location', {
+    const res = await fetch('/.netlify/functions/location', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, token: 'Vani' })
     });
+    sent = res.ok;
   }catch(e){
     console.error('Storage error', e);
+  }
+  if(sent){
+    const lastEl = document.getElementById('groom-last');
+    if(lastEl) lastEl.textContent = formatTime(payload.timestamp);
   }
   window.__lastGroomPayload = payload;
   nextUpdateAt = Date.now() + UPDATE_INTERVAL_MS;
@@ -307,15 +318,15 @@ async function sendGroomLocation(pos){
 function renderGroomActive(){
   render(`
     <h1>Vadászat aktív</h1>
-    <p class="sub">A helyzeted 10 percenként frissül az üldözőknek. Tedd zsebre a telefont és fuss.</p>
+    <p class="sub">A helyzeted 10 percenként frissül az üldözőknek.</p>
     <div class="panel">
       <div class="status-row">
         <span class="status-label">Állapot</span>
-        <span class="status-value ok" id="groom-state">🟢 Küldés folyamatban</span>
+        <span class="status-value ok" id="groom-state">🟢 GPS elérhető</span>
       </div>
       <div class="status-row">
         <span class="status-label">Utolsó jel</span>
-        <span class="status-value" id="groom-last">most</span>
+        <span class="status-value" id="groom-last">küldés…</span>
       </div>
       <div class="divider"></div>
       <div class="status-row">
@@ -344,10 +355,10 @@ function tickGroomCountdown(){
 
 function updateGroomStatus(failed){
   const stateEl = document.getElementById('groom-state');
-  const lastEl = document.getElementById('groom-last');
-  if(stateEl) stateEl.textContent = failed ? '🟠 Nem sikerült frissíteni' : '🟢 Küldés folyamatban';
-  if(stateEl) stateEl.className = 'status-value ' + (failed ? 'warn' : 'ok');
-  if(lastEl) lastEl.textContent = 'most';
+  if(stateEl){
+    stateEl.textContent = failed ? '🟠 GPS nem elérhető' : '🟢 GPS elérhető';
+    stateEl.className = 'status-value ' + (failed ? 'warn' : 'ok');
+  }
 }
 
 function renderGroomError(text){
