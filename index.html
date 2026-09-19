@@ -165,8 +165,8 @@
 
 <script>
 const app = document.getElementById('app');
-const UPDATE_INTERVAL_MS = 10 * 60 * 1000; // 10 perc
-const STALE_AFTER_MS = 12 * 60 * 1000; // 12 perc után gyanús
+const UPDATE_INTERVAL_MS = 5 * 60 * 1000; // 5 perc
+const STALE_AFTER_MS = 6 * 60 * 1000; // 6 perc után gyanús
 const SZEGED_CENTER = [46.253, 20.1414];
 const SZEGED_BOUNDS = L.latLngBounds([46.15, 19.98], [46.34, 20.32]);
 
@@ -186,12 +186,12 @@ function goHome(){
   render(`
     <div class="blip"></div><span style="font-size:13px;color:var(--text-dim);letter-spacing:0.02em;">élő játék</span>
     <h1>Peti legénybúcsú 2026</h1>
-    <p class="sub">A vőlegény telefonja 10 percenként elküldi a helyzetét. Válaszd ki, ki vagy.</p>
+    <p class="sub">A vőlegény telefonja 5 percenként elküldi a helyzetét. Válaszd ki, ki vagy.</p>
     <div class="cards">
       <button class="card" onclick="startGroomPassword()">
         <span class="role-icon">🏃</span>
         <h2>Peti vagyok</h2>
-        <p>A telefonod GPS-ét megosztod az üldözőkkel, 10 percenként frissül. Jelszó szükséges.</p>
+        <p>A telefonod GPS-ét megosztod az üldözőkkel, 5 percenként frissül. Jelszó szükséges.</p>
       </button>
       <button class="card" onclick="startChaser()">
         <span class="role-icon">🔎</span>
@@ -244,7 +244,7 @@ function checkGroomPassword(){
 function startGroom(){
   render(`
     <h1>Vőlegény mód</h1>
-    <p class="sub">Engedélyezd a helymeghatározást. Onnantól a telefonod magától küld egy jelet 10 percenként — nem kell mást csinálnod, csak futni.</p>
+    <p class="sub">Engedélyezd a helymeghatározást. Onnantól a telefonod magától küld egy jelet 5 percenként — nem kell mást csinálnod, csak futni.</p>
     <div class="panel">
       <button class="btn" id="groom-start-btn" onclick="requestGroomLocation()">Vadászat indítása</button>
     </div>
@@ -318,7 +318,7 @@ async function sendGroomLocation(pos){
 function renderGroomActive(){
   render(`
     <h1>Vadászat aktív</h1>
-    <p class="sub">A helyzeted 10 percenként frissül az üldözőknek.</p>
+    <p class="sub">A helyzeted 5 percenként frissül az üldözőknek.</p>
     <div class="panel">
       <div class="status-row">
         <span class="status-label">Állapot</span>
