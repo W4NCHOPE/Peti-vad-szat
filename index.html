@@ -158,6 +158,34 @@
     font-size: 13px;
     color: var(--text-dim);
   }
+  .rules-section{ margin-bottom: 20px; }
+  .rules-section h3{
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .rules-section ul{
+    margin: 0;
+    padding-left: 18px;
+  }
+  .rules-section li{
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .rules-section p{
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-dim);
+  }
+  .rules-section .placeholder{ font-style: italic; opacity: 0.75; }
+  .stake-panel{
+    background: rgba(79,224,138,0.07);
+    border: 1px solid rgba(79,224,138,0.25);
+  }
 </style>
 </head>
 <body>
@@ -188,6 +216,11 @@ function goHome(){
     <h1>Peti legénybúcsú 2026</h1>
     <p class="sub">A vőlegény telefonja 5 percenként elküldi a helyzetét. Válaszd ki, ki vagy.</p>
     <div class="cards">
+      <button class="card" onclick="showRules()">
+        <span class="role-icon">📋</span>
+        <h2>Szabályok</h2>
+        <p>Nézd meg, mik a játékszabályok, mi számít elkapásnak, és mi a tét.</p>
+      </button>
       <button class="card" onclick="startGroomPassword()">
         <span class="role-icon">🏃</span>
         <h2>Peti vagyok</h2>
@@ -199,6 +232,64 @@ function goHome(){
         <p>Megnézed, hol jár most a vőlegény, és odaérsz mielőtt újra elmenekül.</p>
       </button>
     </div>
+  `);
+}
+
+function showRules(){
+  clearTimers();
+  render(`
+    <h1>Szabályok</h1>
+    <p class="sub">Peti legénybúcsúja — 2026.09.26.</p>
+
+    <div class="panel">
+      <div class="rules-section">
+        <h3>🏆 Győzelmi feltételek</h3>
+        <ul>
+          <li>Peti csapata győz, ha nem sikerül elkapni Petit a határidő lejárta előtt.</li>
+          <li>Az Üldözők csapata győz, ha bárki a csapatból elkapja Petit a határidő lejárta előtt.</li>
+        </ul>
+      </div>
+      <div class="rules-section">
+        <h3>⏱️ Időkeret</h3>
+        <p>14:00-kor indul a játék az első GPS-jel elküldésével, játék vége: 14:40.</p>
+      </div>
+      <div class="rules-section">
+        <h3>📍 Helyszín</h3>
+        <p>Szeged.</p>
+      </div>
+      <div class="rules-section">
+        <h3>📸 Mi számít elkapásnak</h3>
+        <p>Petiről készített fénykép beküldése a legénybúcsús csoportba. Petinek felismerhetőnek kell lennie a képen, ennek megfelelő közelségből kell készülnie a képnek.</p>
+      </div>
+      <div class="rules-section">
+        <h3>📡 Pozíciófrissítés</h3>
+        <p>Peti pozíciója 5 percenként frissül.</p>
+      </div>
+      <div class="rules-section">
+        <h3>🏃 Peti csapatára vonatkozó szabályok</h3>
+        <ul>
+          <li>Nem használhatnak semmilyen járművet.</li>
+          <li>Nem mehetnek be zárt helyre, vagy ahova fizetős a belépés.</li>
+          <li>Ha az üldözők közel kerülnek, nem akadályozhatják a fénykép elkészítését.</li>
+        </ul>
+      </div>
+      <div class="rules-section">
+        <h3>🔎 Üldözők csapatára vonatkozó szabályok</h3>
+        <p class="placeholder">semmi</p>
+      </div>
+    </div>
+
+    <div class="panel stake-panel">
+      <div class="rules-section" style="margin-bottom:0;">
+        <h3>🎯 A játék tétje</h3>
+        <ul>
+          <li>Ha Peti csapata győz: Peti választhat egy feladatot, amit mással végeztet el.</li>
+          <li>Ha az Üldözők csapata győz: választhatnak egy feladatot, amit Peti nem hagyhat ki.</li>
+        </ul>
+      </div>
+    </div>
+
+    <button class="backlink" onclick="goHome()">← vissza a főoldalra</button>
   `);
 }
 
